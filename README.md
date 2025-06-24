@@ -2,6 +2,8 @@
 
 Bulk delete Google Calendar events by search term. Deletes ALL events containing the entered text.
 
+![Demo](demo.gif)
+
 ## Usage
 
 1. Open Google Calendar
