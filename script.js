@@ -61,14 +61,14 @@
       firstMatch.click();
       
       setTimeout(() => {
-        const deleteButton = document.querySelector('button[aria-label="Delete event"]');
+        const deleteButton = document.querySelector('button[aria-label="Delete event"]') || document.querySelector('button[aria-label="Delete task"]');
         if (deleteButton) {
           deleteButton.click();
           
           // Check for recurring event dialog after clicking delete
           setTimeout(() => {
             const recurringDialog = document.querySelector('span.uW2Fw-k2Wrsb-fmcmS[jsname="MdSI6d"]');
-            if (recurringDialog && recurringDialog.textContent.includes('Delete recurring event')) {
+            if (recurringDialog && recurringDialog.textContent.includes('Delete recurring event') || recurringDialog.textContent.includes('Delete repeating task')) {
               console.log('Recurring event dialog detected, clicking OK...');
               const okButton = document.querySelector('[data-mdc-dialog-action="ok"]');
               if (okButton) {
