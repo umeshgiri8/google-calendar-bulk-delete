@@ -19,32 +19,49 @@
     }
   };
 
+  const getAndValidateInput = (key, message, defaultValue) => {
+    const result = prompt(message, defaultValue);
+    
+      if (!result) {
+        logger.warn('User cancelled input dialog or provided null value');
+        alert(`No value for ${key} provided. Operation cancelled.`);
+        return null;
+      }
+      
+      if (result.trim() === '') {
+        logger.warn('User provided empty string after trimming');
+        alert(`Value for ${key} cannot be empty. Operation cancelled.`);
+        return null;
+      }
+      
+      const trimmedSearch = result.trim();
+      logger.info(`Value for ${key} collected`, {string: result, length: result.length});
+
+      return result;
+  }
+
+  const reoccurringDialogSelector = 'span.uW2Fw-k2Wrsb-fmcmS[jsname="MdSI6d"]';
+  const reoccurringDialogOkButtonSelector = '[data-mdc-dialog-action="ok"]';
+
+  let nextPageLabel, deleteEventButtonLabel, deleteTaskButtonLabel, deleteReoccurringEventLabel,
+    deleteReoccurringTaskLabel, maxPages;
+
   // Function to get user input and confirmation with enhanced validation
   const getUserInput = () => {
     logger.info('Starting user input collection');
-    
+
     try {
-      const searchString = prompt("Enter the text/string to search for in calendar events that you want to delete:");
-      
-      if (!searchString) {
-        logger.warn('User cancelled input dialog or provided null value');
-        alert("No search string provided. Operation cancelled.");
-        return null;
-      }
-      
-      if (searchString.trim() === '') {
-        logger.warn('User provided empty string after trimming');
-        alert("Search string cannot be empty. Operation cancelled.");
-        return null;
-      }
-      
-      const trimmedSearch = searchString.trim();
-      logger.info('Search string collected', { searchString: trimmedSearch, length: trimmedSearch.length });
-      
+      nextPageLabel = getAndValidateInput('nextPageLabel', "Next page label", 'Next month');
+      deleteEventButtonLabel = getAndValidateInput('deleteEventButtonLabel', "Delete event label", 'Delete event');
+      deleteTaskButtonLabel = getAndValidateInput('deleteTaskButtonLabel', "Delete task label", 'Delete task');
+      deleteReoccurringEventLabel = getAndValidateInput('deleteReoccurringEventLabel', "Delete reoccurring event label", 'Delete repeating event');
+      deleteReoccurringTaskLabel = getAndValidateInput('deleteReoccurringTaskLabel', "Delete reoccurring task label", 'Delete recurring task');
+      maxPages = getAndValidateInput('maxPages', "Max months to process", 12);
+      const trimmedSearch = getAndValidateInput('trimmedSearch', "Enter the text/string to search for in calendar events that you want to delete", "");
       const confirmation = confirm(
         `Are you sure you want to delete ALL events containing "${trimmedSearch}"?\n\n` +
         "This action cannot be undone. The script will:\n" +
-        "1. Search through up to 12 pages of your calendar\n" +
+        `1. Search through up to ${maxPages} pages of your calendar` +
         "2. Delete every event that contains this text\n" +
         "3. Continue until all matching events are removed\n\n" +
         "Click OK to proceed or Cancel to abort."
@@ -139,7 +156,7 @@
       
       // Wait for delete button with timeout
       const deleteButton = await waitForElement(
-        'button[aria-label="Delete event"], button[aria-label="Delete task"]',
+        'button[aria-label="' + deleteEventButtonLabel + '"], button[aria-label="' + deleteTaskButtonLabel + '"]',
         3000
       );
       
@@ -151,15 +168,15 @@
         setTimeout(async () => {
           try {
             // Look for recurring event dialog
-            const recurringDialog = document.querySelector('span.uW2Fw-k2Wrsb-fmcmS[jsname="MdSI6d"]');
+            const recurringDialog = document.querySelector(reoccurringDialogSelector);
             
             if (recurringDialog && 
-                (recurringDialog.textContent.includes('Delete recurring event') || 
-                 recurringDialog.textContent.includes('Delete repeating task'))) {
+                (recurringDialog.textContent.includes(deleteReoccurringEventLabel) ||
+                 recurringDialog.textContent.includes(deleteReoccurringTaskLabel))) {
               
               logger.info('Recurring event dialog detected');
               
-              const okButton = await waitForElement('[data-mdc-dialog-action="ok"]', 2000);
+              const okButton = await waitForElement(reoccurringDialogOkButtonSelector, 2000);
               okButton.click();
               
               logger.success('Recurring event deleted', { eventText });
@@ -191,7 +208,7 @@
     try {
       logger.info('Navigating to next page', { currentPage, nextPage: currentPage + 1 });
       
-      const nextButton = await waitForElement('button[aria-label="Next month"]', 3000);
+      const nextButton = await waitForElement('button[aria-label="' + nextPageLabel + '"]', 3000);
       nextButton.click();
       
       logger.info('Next button clicked, waiting for page load');
@@ -210,7 +227,6 @@
   // Main deletion process with comprehensive error handling
   const processCalendarDeletion = async (searchString) => {
     let currentPage = 1;
-    const maxPages = 12;
     let totalDeleted = 0;
     let totalErrors = 0;
     const errors = [];
